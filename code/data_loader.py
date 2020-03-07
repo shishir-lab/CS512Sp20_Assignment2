@@ -1,7 +1,8 @@
+#%%
 import gzip
 import csv
 import numpy as np
-
+#%%
 class DataLoader:
     def __init__(self):
         data_path = '../data/letter.data.gz'
@@ -45,7 +46,7 @@ class DataLoader:
         data = [x + ([padding] * (max_length - len(x))) for x in data]
         target = [x + ([''] * (max_length - len(x))) for x in target]
         return np.array(data), np.array(target)
-
+#%%
 def get_dataset():
     dataset = DataLoader()
 
