@@ -8,12 +8,12 @@ class ConvTest():
 		K = torch.Tensor([[[[1,0,1],[0,1,0],[1,0,1]]]])
         
         	# manual implementation
-		conv = Conv(K,3,stride=1,padding=1)
+		conv = Conv(K,3,stride=1,padding=0)
 		manual = conv.forward(X)
 		print(manual)
 
 		#pytorch automatic implementation
-		pytorch = nn.functional.conv2d(X, K, padding=1,stride=1)
+		pytorch = nn.functional.conv2d(X, K, padding=0,stride=1)
 		print(pytorch)
 		return(torch.eq(manual,pytorch))
 		
