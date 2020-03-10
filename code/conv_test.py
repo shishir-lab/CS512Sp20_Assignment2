@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from tessst import Conv
+from conv import Conv
 
 class ConvTest():
 	def test(self):
