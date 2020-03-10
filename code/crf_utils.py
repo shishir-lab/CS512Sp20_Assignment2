@@ -25,7 +25,7 @@ def crf_decode(W, T, word, dimX, dimY):
         first_term = W.t().matmul(word[i])
         if previousAns[-1] is None: #last label does not have next_label
             score = torch.max(first_term + lookup[i]) # lookup contains best score 
-            print(score) # Score to be reported
+            # print(score) # Score to be reported
             ans = torch.argmax(first_term + lookup[i])
             previousAns[0] = ans
         else:
@@ -152,3 +152,22 @@ def crf_gradient(W, T, word, labels, dimX, dimY):
 
     return grad_W, grad_T
 
+#%%
+def compare(test_X, test_Y, preds):
+    wordMatch = 0.0
+    letterMatch = 0.0
+    letterCount = 0.0
+    for i,pred in enumerate(preds):
+        char_count = torch.nonzero(test_X[i].sum(axis=1)).size(0)
+        pred = torch.argmax(pred, axis=1)[:char_count]
+        truth = torch.argmax(test_Y[i], axis=1)[:char_count]
+        matchingLetters = (pred == truth).sum()
+        letterMatch += matchingLetters
+        letterCount += char_count
+        if matchingLetters == char_count:
+            wordMatch += 1
+    letterAcc = letterMatch / letterCount
+    wordAcc = wordMatch / preds.shape[0]
+    print("Letter Accuracy: ", letterAcc)
+    print("Word Accuracy: ", wordAcc)
+    return letterAcc, wordAcc

@@ -24,8 +24,8 @@ class CRFLoss(torch.autograd.function.Function):
     
   @staticmethod
   def backward(ctx, grad_output):
-    print("Called backward function...")
-    print(grad_output)
+    # print("Called backward function...")
+    # print(grad_output)
     dimX = ctx.dimX
     dimY = ctx.dimY
     C = ctx.C
@@ -52,83 +52,117 @@ class CRFLoss(torch.autograd.function.Function):
 
 class CRF(nn.Module):
 
-    def __init__(self, input_dim, embed_dim, conv_layers, num_labels, batch_size, C=1000):
+    def __init__(self, input_dim=(16,8), conv_layers=[[5, 2, (2,1)]], num_labels=26, C=1000):
         """
-        Linear chain CRF as in Assignment 2
-        @param input_dim: Number of features in raw input (default: 128)
-        @param embed_dim: #TODO decode (default: 64)
-        @param conv_layers: #TODO decode (default: [[1, 64, 128]])
+        Linear chain CRF with convolution layers
+        @param input_dim: The dimension of input image. (default (16,8))
+        @param conv_layers: A list of params to Conv layers. Each layer has [kernel_size, padding, stride] parameters
         @param num_labels: Number of labels in raw input (default: 26)
-        @param batch_size: Number of training examples in a batch (default: 64)
+        @param C: The complexity parameter for regularization. (default: 1000)
         """
         super(CRF, self).__init__()
         self.input_dim = input_dim 
-        self.embed_dim = embed_dim
-        self.conv_layers = conv_layers
         self.num_labels = num_labels
-        self.batch_size = batch_size
-        self.use_cuda = torch.cuda.is_available()
+        self.C = C
+        # Temp Conv Impl: #TODO Remove this and handle multiple layers
+        self.conv_layers = []
+        if conv_layers is not None and len(conv_layers) != 0:
+            for kernel_size, zero_padding, stride in conv_layers:
+                self.conv_layers.append(nn.Conv2d(in_channels=1, out_channels=1,
+                       kernel_size=kernel_size, stride=stride, 
+                       padding=zero_padding, bias=False)
+                    )
+        for i,layer in enumerate(self.conv_layers):
+            name = "layer{}".format(i+1)
+            self.add_module(name, layer)
+        
         # Replicating old CRF on pytorch
         # TODO handle zero-padding
-        self.C = C
-        self.W = Parameter(torch.empty(self.input_dim, self.num_labels), requires_grad=True)
-        self.T = Parameter(torch.empty(self.num_labels, self.num_labels), requires_grad=True)
+        self.init_params()
+        self.use_cuda = torch.cuda.is_available()
+
         ### Use GPU if available
         if self.use_cuda:
             [m.cuda() for m in self.modules()]
-        self.init_params()
-
+            
+            
+    def get_embedding_dim(self):
+        """
+        Automatically calculate the dimension of the embedding produced by conv layers.
+        The flatten embedding will be sent to the CRF layer. So, the parameters should be
+        initialized using embedding dimension.
+        Returns
+        -------
+        tuple (emb_dimX, emb_dimY)
+        """
+        input_dim = torch.tensor(self.input_dim)
+        for layer in self.conv_layers:
+            input_dim = 1 + (input_dim + 2*torch.tensor(layer.padding) - \
+                             (torch.tensor(layer.kernel_size) -1) \
+                            - 1)//torch.tensor(layer.stride)
+        return input_dim
+    
     def init_params(self):
         """
         Initialize trainable parameters of CRF here
-        """        
-        for param in self.parameters():
-          param.data.zero_()
+        """ 
+        embed_dim = self.get_embedding_dim()
+        self.embed_dim = torch.prod(embed_dim).item()
+        self.W = Parameter(torch.empty(self.embed_dim, self.num_labels), requires_grad=True)
+        self.T = Parameter(torch.empty(self.num_labels, self.num_labels), requires_grad=True)
+        self.W.data.zero_()
+        self.T.data.zero_()
+        
           
     def load_params(self, W, T):
-        self.W.data = W
-        self.T.data = T
+        if W.shape[0] == self.embed_dim and W.shape[1] == self.num_labels  \
+            and T.shape[0] == self.num_labels and T.shape[1] == self.num_labels:
+            self.W.data = W
+            self.T.data = T
+        else:
+            raise Exception("The dimension of parameters do not match. Expected W: {} x {} and T : {} x {}".format(
+                            self.embed_dim, self.num_labels, self.num_labels, self.num_labels))
 
     def forward(self, X):
         """
         Implement the objective of CRF here.
         The input (features) to the CRF module should be convolution features.
         """
-        # features = self.get_conv_feats(X) # TODO Implement it
-        dimX = self.input_dim
-        dimY = self.num_labels
-        batch_size = X.size(0)
-        max_chars = X.size(1)
-        predictions = torch.zeros(batch_size, max_chars, dimY)
-        for i,word in enumerate(X):
-          preds = crf_decode(self.W,self.T,word,dimX,dimY)
-          one_hot_preds = torch.zeros(max_chars, dimY, dtype=torch.long)
-          one_hot_preds[torch.arange(len(preds)), preds] = 1
-          predictions[i] = one_hot_preds
-        return predictions
+        features = self.get_conv_features(X) 
+        with torch.no_grad():
+            batch_size, max_chars, dimX = features.shape
+            dimY = self.num_labels
+            dimX = self.embed_dim
+            predictions = torch.zeros(batch_size, max_chars, dimY)
+            for i,word in enumerate(features):
+              preds = crf_decode(self.W,self.T,word,dimX,dimY)
+              one_hot_preds = torch.zeros(max_chars, dimY, dtype=torch.long)
+              one_hot_preds[torch.arange(len(preds)), preds] = 1
+              predictions[i] = one_hot_preds
+            return predictions
 
     def loss(self, words, labels):
         """
         Compute the negative conditional log-likelihood of a labelling given a sequence.
         """
-        # features = self.get_conv_feats(X)
-        dimX = self.input_dim
+        features = self.get_conv_features(words)
+        dimX = self.embed_dim
         dimY = self.num_labels
         # Commented code for utilizing pytorch autograd and checking grads
-        # W = self.W
-        # T = self.T
-        # C = self.C
+        W = self.W
+        T = self.T
+        C = self.C
 
-        # log_crf = 0
-        # for i in range(words.shape[0]):
-        #     log_crf += crf_logloss(W, T, words[i], labels[i], dimX, dimY)
+        log_crf = 0
+        for i in range(features.shape[0]):
+            log_crf += crf_logloss(W, T, features[i], labels[i], dimX, dimY)
         
-        # log_crf = log_crf / words.shape[0]
-        # # print(log_crf)
-        # f = (-C *log_crf)  + 0.5 * torch.sum(W*W) + 0.5 * torch.sum(T*T)
-        # return f
+        log_crf = log_crf / features.shape[0]
+        # print(log_crf)
+        f = (-C *log_crf)  + 0.5 * torch.sum(W*W) + 0.5 * torch.sum(T*T)
+        return f
 
-        return CRFLoss.apply(self.W, self.T, words, labels, self.C, dimX, dimY)
+        # return CRFLoss.apply(self.W, self.T, features, labels, self.C, dimX, dimY)
     
 
 
@@ -136,8 +170,17 @@ class CRF(nn.Module):
         """
         Generate convolution features for a given word
         """
-        convfeatures = None # TODO implement
-        return convfeatures
+        # TODO Handle multiple Conv layers
+        if self.conv_layers is None or len(self.conv_layers) == 0:
+            return X
+        else:
+            batch_size, max_chars, dimX = X.shape
+            all_images = X.reshape(-1,1,self.input_dim[0],self.input_dim[1])
+            for layer in self.conv_layers:
+                out = layer(all_images)
+            convfeatures = out.reshape(batch_size, max_chars, -1)
+            assert convfeatures.shape[2] == self.embed_dim
+            return convfeatures
 #%%
 
     
