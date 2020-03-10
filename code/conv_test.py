@@ -7,7 +7,7 @@ class ConvTest():
 		X = torch.Tensor([[1,1,1,0,0],[0,1,1,1,0],[0,0,1,1,1],[0,0,1,1,0],[0,1,1,0,0]]).view((1,1,5,5));
 		K = torch.Tensor([[[[1,0,1],[0,1,0],[1,0,1]]]])
         
-        # manual implementation
+        	# manual implementation
 		conv = Conv(K,3,stride=1,padding=1)
 		manual = conv.forward(X)
 		print(manual)
