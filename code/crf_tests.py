@@ -77,8 +77,8 @@ def test_check_grad():
     np.random.seed(3)
     word_list = np.random.randint(10,size=DIMX*n_chars*n_words).reshape(n_words,n_chars,DIMX).tolist()
     label_list = np.random.choice(range(1,DIMY+1),size=n_chars*n_words).reshape(n_words,n_chars).tolist()
-    x = np.zeros((DIMX*DIMY)+DIMY*DIMY)
-#    x= np.random.uniform(size=(DIMX*DIMY)+(DIMY*DIMY))
+    # x = np.zeros((DIMX*DIMY)+DIMY*DIMY)
+    x= np.random.uniform(size=(DIMX*DIMY)+(DIMY*DIMY))
     model = CRFModel(DIMX, DIMY)
     model.load_X(x)
     W1, T1 = model._W, model._T.T
@@ -109,15 +109,15 @@ print(g)
 def check_gradients():
     DIMX=20
     DIMY=4
-    n_words = 10
+    n_words = 2
     n_chars = 3
     np.random.seed(3)
     word_list = np.random.randint(10,size=DIMX*n_chars*n_words).reshape(n_words,n_chars,DIMX).tolist()
     label_list = np.random.choice(range(0,DIMY),size=n_chars*n_words).reshape(n_words,n_chars).tolist()
-    words = torch.tensor(word_list, dtype=torch.double)
+    words = torch.tensor(word_list, dtype=torch.double, requires_grad=True)
     labels = torch.tensor(label_list)
-    W = torch.zeros(DIMX, DIMY, requires_grad=True).double()
-    T = torch.zeros(DIMY, DIMY, requires_grad=True).double()
+    W = torch.randn(DIMX, DIMY, requires_grad=True).double()
+    T = torch.randn(DIMY, DIMY, requires_grad=True).double()
     C = 1
     print(words.shape, labels.shape, W.shape, T.shape)
     loss = CRFLoss.apply
@@ -129,7 +129,7 @@ check_gradients()
 def check_gradients_module():
     DIMX=20
     DIMY=4
-    n_words = 1
+    n_words = 10
     n_chars = 3
     np.random.seed(3)
     word_list = np.random.randint(2,size=DIMX*n_chars*n_words).reshape(n_words,n_chars,DIMX).tolist()
@@ -142,12 +142,13 @@ def check_gradients_module():
     # W = torch.zeros(DIMX, DIMY, requires_grad=True).double()
     # T = torch.zeros(DIMY, DIMY, requires_grad=True).double()
     # C = 1
+        
     # print(words.shape, labels.shape, W.shape, T.shape)
     # loss = CRFLoss.apply
     # res = torch.autograd.gradcheck(loss, (W, T, words, labels, C, DIMX, DIMY), raise_exception=True)
     # print(res)
-    print(words)
-    print(labels)
+    # print(words)
+    # print(labels)
     
     mycrf = CRF(input_dim=(5,4), num_labels=DIMY, conv_layers=[[3,1,1]], C=1)
     # W = torch.zeros(DIMX, DIMY, requires_grad=True).double()
@@ -181,9 +182,9 @@ def test_optimize():
     labels = trainSet[:][1]
     # mycrf = CRF(input_dim=(16,8), conv_layers=[[5,2,(2,1)]], num_labels=26, C=100)
     # mycrf = CRF(input_dim=(16,8), conv_layers=[], num_labels=26, C=100)
-
+    print(mycrf)
     # Setup the optimizer
-    opt = optim.LBFGS(mycrf.parameters(), max_iter=100)
+    opt = optim.LBFGS(mycrf.parameters(), max_iter=50)
     start = time.time()
     disp = 0
     def closure():
@@ -213,58 +214,81 @@ mycrf = test_optimize()
 # torch.backends.cudnn.enabled=False
 # torch.backends.cudnn.deterministic=True
 #%%
-# import torch.nn as nn
-# from read_data import read_tensor_padding
-# print("Loading Dataset...")
-# trainSet = read_tensor_padding('../data/train.txt')
-# testSet = read_tensor_padding('../data/train.txt')
-# print("Dataset Loaded ...")
-# words = trainSet[:][0]
-# labels = trainSet[:][1]
-# #%%
-# testcrf = CRF(input_dim=(16,8), conv_layers=[[5,2,(1,1)]], num_labels=26, C=100)
-# # Setup the optimizer
-# for param in testcrf.parameters():
-#     print(param.shape)
-# #%%
+import torch.nn as nn
+from conv import Conv
+from crf import CRF, CRFLoss
+import torch.optim as optim
+from read_data import read_tensor_padding
+#%%
+print("Loading Dataset...")
+trainSet = read_tensor_padding('../data/train.txt')
+testSet = read_tensor_padding('../data/train.txt')
+print("Dataset Loaded ...")
+words = trainSet[:][0]
+labels = trainSet[:][1]
+#%%
+# trainConv = trainSet[:][0]
+# batch_size, max_chars, dimX = trainConv.shape
+# all_images = trainConv.reshape(-1,1,16,8)
+# conv_layer = Conv(in_channels=1, out_channels=1,
+#                         kernel_size=5, stride=1, padding=1)
+# out = conv_layer(all_images[0:3])
+# builtin_conv = nn.Conv2d(in_channels=1, out_channels=1,
+#                         kernel_size=5, stride=1, padding=1)
+# out1 = builtin_conv(all_images[0:3])
+# print(out.shape)
+# print(out1.shape)
+# assert out.shape == out1.shape
+# assert torch.allclose(out, out1)
+#%%
 # testcrf.load_params(backupW.clone(), backupT.clone())
 # #%%
 # preds = testcrf(testSet[:][0])
 # compare(testSet[:][0], testSet[:][1], preds)
 # #%%
-# opt = optim.LBFGS(testcrf.parameters(), max_iter=5)
-# start = time.time()
-# disp = 0
-# def closure():
-#     opt.zero_grad() # clear the gradients
-#     tr_loss = testcrf.loss(words, labels) # Obtain the loss for the optimizer to minimize
-#     tr_loss.backward() # Run backward pass and accumulate gradients
-#     if disp % 10 == 0:
-#         print(tr_loss)
-#         print(testcrf.conv_layers[0].weight.grad)
-#     return tr_loss
+# from torchviz import make_dot, make_dot_from_trace
+testcrf = CRF(input_dim=(16,8), conv_layers=[[5,2,(2,1)]], num_labels=26, C=100)
+opt = optim.SGD(testcrf.parameters(), lr=0.01, momentum=0.9)
+words = words[:64]
+labels = labels[:64]
+for i in range(10):
+    # opt = optim.LBFGS(testcrf.parameters(), max_iter=5)
+    start = time.time()
+    disp = 0
+    # def closure():
+    #     opt.zero_grad() # clear the gradients
+    #     tr_loss = testcrf.loss(words, labels) # Obtain the loss for the optimizer to minimize
+    #     tr_loss.backward() # Run backward pass and accumulate gradients
+    #     if disp % 10 == 0:
+    #         print(tr_loss)
+    #         print(testcrf.conv_layers[0].weight.grad)
+    #     return tr_loss
+    
+    # opt.step(closure)
+    tr_loss = testcrf.loss(words, labels) 
+    tr_loss.backward()
+    print(testcrf.conv_layers[0].weight.grad)
+    opt.step()
+    end = time.time()
+    print(end-start)
+    # x = words[:256]
+    # loss = testcrf.loss(x, labels[:256])
+    # print(testcrf.conv_layers[0].weight.grad)
+    # print(loss)
+    # print(loss.grad_fn)  # MSELoss
+    # # for next_func in loss.grad_fn.next_functions:
+    # #     print(next_func)
+    # print(loss.grad_fn.next_functions[2][0].next_functions[0][0])  # Linear
+    # print(loss.grad_fn.next_functions[2][0].next_functions[0][0].next_functions[0][0]) 
+    preds = testcrf(testSet[:][0])
+    compare(testSet[:][0], testSet[:][1], preds)
+# dot = make_dot(loss, params=dict(testcrf.named_parameters()))
 
-# opt.step(closure)
-# end = time.time()
-# print(end-start)
-# with torch.no_grad():
-#     loss = testcrf.loss(words, labels)
-#     print(loss)
-#     preds = testcrf(testSet[:][0])
-#     compare(testSet[:][0], testSet[:][1], preds)
-# # trainConv = trainSet[:][0]
-# # batch_size, max_chars, dimX = trainConv.shape
-# # all_images = trainConv.reshape(-1,1,16,8)
-# # conv_layer = nn.Conv2d(in_channels=1, out_channels=1, groups=1,
-# #                        kernel_size=5, stride=(2,1), padding=2, bias=False)
-# # out = conv_layer(all_images[:2])
-# # out = out.view(-1, 64)
-# # # out = out.reshape(batch_size, max_chars, -1)
-# # print(out)
-# # print(out.shape)
 
-
-
-
+#%%
+x1 = torch.rand(5).requires_grad_()
+x2 = x1.view((-1, 1))
+x1.sum().backward()
+print(x1.grad)
 
     

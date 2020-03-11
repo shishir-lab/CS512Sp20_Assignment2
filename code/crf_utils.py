@@ -125,6 +125,7 @@ def crf_gradient(W, T, word, labels, dimX, dimY):
     W and T are initial weights
     TODO matrix implementation
     """
+    grad_word_all = torch.zeros(word.shape)
     char_count = torch.nonzero(word.sum(axis=1)).size(0)
     word = word[:char_count]
     if len(labels.shape) > 1:
@@ -149,8 +150,11 @@ def crf_gradient(W, T, word, labels, dimX, dimY):
         ind_ij = torch.zeros((dimY,dimY))
         ind_ij[pair] = 1.0
         grad_T += ind_ij - marY1[i]
-
-    return grad_W, grad_T
+        
+    grad_word = W.T[Y] - marY.matmul(W.T)
+    
+    grad_word_all[:char_count] = grad_word
+    return grad_W, grad_T, grad_word_all
 
 #%%
 def compare(test_X, test_Y, preds):

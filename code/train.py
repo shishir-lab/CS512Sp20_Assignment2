@@ -12,8 +12,8 @@ from crf_utils import compare
 # Tunable parameters
 batch_size = 64
 num_epochs = 10
-max_iters  = 100
-print_iter = 1 # Prints results every n iterations
+# max_iters  = 500
+print_iter = 5 # Prints results every n iterations
 conv_layers = [[5, 2, (2,1)]] #
 
 
@@ -23,10 +23,10 @@ num_labels = 26
 cuda = torch.cuda.is_available()
 
 # Instantiate the CRF model
-crf = CRF(input_dim=input_dim, conv_layers=conv_layers, num_labels=num_labels,  C=1000)
+crf = CRF(input_dim=input_dim, conv_layers=conv_layers, num_labels=num_labels,  C=100)
 
 # Setup the optimizer
-opt = optim.LBFGS(crf.parameters())
+opt = optim.LBFGS(crf.parameters(), max_iter=20)
 
 
 ##################################################
@@ -82,19 +82,20 @@ for i in range(num_epochs):
             opt.zero_grad() # clear the gradients
             tr_loss = crf.loss(train_X, train_Y) # Obtain the loss for the optimizer to minimize
             tr_loss.backward() # Run backward pass and accumulate gradients
+            print()
             return tr_loss
             
         opt.step(closure) # Perform optimization step (weight updates)
 
         # print to stdout occasionally:
         if step % print_iter == 0:
-            # random_ixs = np.random.choice(test_data.shape[0], batch_size, replace=False)
-            # test_X = test_data[random_ixs, :]
-            # test_Y = test_target[random_ixs, :]
+            random_ixs = np.random.choice(test_data.shape[0], batch_size, replace=False)
+            test_X = test_data[random_ixs, :]
+            test_Y = test_target[random_ixs, :]
 
             # Convert to torch
-            test_X = torch.from_numpy(test_data).double()
-            test_Y = torch.from_numpy(test_target).long()
+            test_X = torch.from_numpy(test_X).double()
+            test_Y = torch.from_numpy(test_Y).long()
 
             if cuda:
                 test_X = test_X.cuda()

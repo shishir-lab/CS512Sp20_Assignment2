@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.nn.parameter import Parameter
 import numpy as np
 from crf_utils import crf_decode, crf_gradient, crf_logloss
+from Q3a import myConv
 torch.set_default_dtype(torch.float64)
 #%%
 class CRFLoss(torch.autograd.function.Function):
@@ -30,29 +31,36 @@ class CRFLoss(torch.autograd.function.Function):
     dimY = ctx.dimY
     C = ctx.C
     W, T, words, labels = ctx.saved_tensors
+    
+    batch_size, max_chars, embedDim = words.shape
     avg_grad_W = torch.zeros(dimY, dimX)
     avg_grad_T = torch.zeros(dimY, dimY)
+    avg_grad_word = torch.zeros(batch_size, max_chars, embedDim)
     
     for i in range(words.shape[0]):
-        gradW, gradT = crf_gradient(W, T, words[i], labels[i], dimX, dimY)
+        gradW, gradT, gradWord = crf_gradient(W, T, words[i], labels[i], dimX, dimY)
         avg_grad_W += gradW
         avg_grad_T += gradT
-    avg_grad_W = avg_grad_W / words.shape[0]
-    avg_grad_T = avg_grad_T / words.shape[0]
+        avg_grad_word[i] = gradWord
+    avg_grad_W = avg_grad_W / batch_size
+    avg_grad_T = avg_grad_T / batch_size
+    avg_grad_word = avg_grad_word / batch_size
         
     grad_W = -C * avg_grad_W.T + W
     grad_T = -C * avg_grad_T + T
     grad_W = grad_W * (grad_output)
     grad_T = grad_T * (grad_output)
+    avg_grad_word = (-C * avg_grad_word) * (grad_output)
+    
     # calculate the gradient for the loss function
-    return grad_W, grad_T, None, None, None, None, None
+    return grad_W, grad_T, avg_grad_word, None, None, None, None
 
 #%%
 
 
 class CRF(nn.Module):
 
-    def __init__(self, input_dim=(16,8), conv_layers=[[5, 2, (2,1)]], num_labels=26, C=1000):
+    def __init__(self, input_dim=(16,8), conv_layers=[[5, 2, 1]], num_labels=26, C=1000):
         """
         Linear chain CRF with convolution layers
         @param input_dim: The dimension of input image. (default (16,8))
@@ -77,7 +85,6 @@ class CRF(nn.Module):
             self.add_module(name, layer)
         
         # Replicating old CRF on pytorch
-        # TODO handle zero-padding
         self.init_params()
         self.use_cuda = torch.cuda.is_available()
 
@@ -128,8 +135,8 @@ class CRF(nn.Module):
         Implement the objective of CRF here.
         The input (features) to the CRF module should be convolution features.
         """
-        features = self.get_conv_features(X) 
         with torch.no_grad():
+            features = self.get_conv_features(X) 
             batch_size, max_chars, dimX = features.shape
             dimY = self.num_labels
             dimX = self.embed_dim
@@ -149,20 +156,20 @@ class CRF(nn.Module):
         dimX = self.embed_dim
         dimY = self.num_labels
         # Commented code for utilizing pytorch autograd and checking grads
-        W = self.W
-        T = self.T
-        C = self.C
+        # W = self.W
+        # T = self.T
+        # C = self.C
 
-        log_crf = 0
-        for i in range(features.shape[0]):
-            log_crf += crf_logloss(W, T, features[i], labels[i], dimX, dimY)
+        # log_crf = 0
+        # for i in range(features.shape[0]):
+        #     log_crf += crf_logloss(W, T, features[i], labels[i], dimX, dimY)
         
-        log_crf = log_crf / features.shape[0]
-        # print(log_crf)
-        f = (-C *log_crf)  + 0.5 * torch.sum(W*W) + 0.5 * torch.sum(T*T)
-        return f
+        # log_crf = log_crf / features.shape[0]
+        # # print(log_crf)
+        # f = (-C *log_crf)  + 0.5 * torch.sum(W*W) + 0.5 * torch.sum(T*T)
+        # return f
 
-        # return CRFLoss.apply(self.W, self.T, features, labels, self.C, dimX, dimY)
+        return CRFLoss.apply(self.W, self.T, features, labels, self.C, dimX, dimY)
     
 
 
@@ -175,12 +182,12 @@ class CRF(nn.Module):
             return X
         else:
             batch_size, max_chars, dimX = X.shape
-            all_images = X.reshape(-1,1,self.input_dim[0],self.input_dim[1])
+            all_images = X.view(-1,1,self.input_dim[0],self.input_dim[1])
             for layer in self.conv_layers:
                 out = layer(all_images)
-            convfeatures = out.reshape(batch_size, max_chars, -1)
-            assert convfeatures.shape[2] == self.embed_dim
-            return convfeatures
+            out1 = out.view(batch_size, max_chars, -1)
+            assert out1.shape[2] == self.embed_dim
+            return out1
 #%%
 
     
