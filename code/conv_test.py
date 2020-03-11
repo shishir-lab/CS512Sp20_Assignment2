@@ -3,21 +3,21 @@ import torch.nn as nn
 from conv import Conv
 
 class ConvTest():
-	def test(self):
-		X = torch.Tensor([[1,1,1,0,0],[0,1,1,1,0],[0,0,1,1,1],[0,0,1,1,0],[0,1,1,0,0]]).view((1,1,5,5));
-		K = torch.Tensor([[[[1,0,1],[0,1,0],[1,0,1]]]])
-        
-        	# manual implementation
-		conv = Conv(K,3,stride=1,padding=0)
-		manual = conv.forward(X)
-		print(manual)
+    def test(self):
+        X = torch.Tensor([[1,1,1,0,0],[0,1,1,1,0],[0,0,1,1,1],[0,0,1,1,0],[0,1,1,0,0]]).view((1,1,5,5));
+        K = torch.Tensor([[[[1,0,1],[0,1,0],[1,0,1]]]])
+        # manual implementation
+        conv = Conv(3,stride=1,padding=0)
+        conv.load_params(K)
+        manual = conv.forward(X)
+        print(manual)
 
-		#pytorch automatic implementation
-		pytorch = nn.functional.conv2d(X, K, padding=0,stride=1)
-		print(pytorch)
-		return(torch.eq(manual,pytorch))
-		
-		
+        #pytorch automatic implementation
+        pytorch = nn.functional.conv2d(X, K, padding=0,stride=1)
+        print(pytorch)
+        return(torch.eq(manual,pytorch))
+        
+        
 a = ConvTest()
 a.test()
 
