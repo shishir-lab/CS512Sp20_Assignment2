@@ -50,11 +50,8 @@ class myConv(nn.Module):
         K_rows = self.filter_weights.shape[2]
         K_cols = self.filter_weights.shape[3]
         result_xdim = math.floor(((X_rows - (K_rows-1)-1) / self.str_row) + 1)
-        print(result_xdim)
         result_ydim = math.floor(((X_cols - (K_cols-1)-1) / self.str_col) + 1)
-        #result = torch.zeros([self.batch_size, self.out_channels, math.floor((X_rows - K_rows + self.str_row) / self.str_row), math.floor((X_cols - K_cols + self.str_col) / self.str_col)], dtype=torch.float64)
         result = torch.zeros([self.batch_size, self.out_channels, result_xdim, result_ydim], dtype=torch.float64)
-        print(result.size(),'size khoruuuuuuuji')
         for i in range(0, result_xdim):
             for j in range(0, result_ydim):
                 #calculates a single activation for all samples in the batch by using torch.narrow()
@@ -71,7 +68,6 @@ if __name__ == '__main__':
     in_channels = 1
     out_channels = 1
     kernel_size = 3
-    #stride=torch.tensor([1,1])
     stride=[2,2]
     stride2=(2,2)
     bias = False
