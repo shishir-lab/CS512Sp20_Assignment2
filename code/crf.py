@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.nn.parameter import Parameter
 import numpy as np
 from crf_utils import crf_decode, crf_gradient, crf_logloss
-from Q3a import myConv
+from batch_custom_Conv import myConv
 torch.set_default_dtype(torch.float64)
 #%%
 class CRFLoss(torch.autograd.function.Function):
@@ -76,9 +76,12 @@ class CRF(nn.Module):
         self.conv_layers = []
         if conv_layers is not None and len(conv_layers) != 0:
             for kernel_size, zero_padding, stride in conv_layers:
-                self.conv_layers.append(nn.Conv2d(in_channels=1, out_channels=1,
-                       kernel_size=kernel_size, stride=stride, 
-                       padding=zero_padding, bias=False)
+                # self.conv_layers.append(nn.Conv2d(in_channels=1, out_channels=1,
+                #        kernel_size=kernel_size, stride=stride, 
+                #        padding=zero_padding, bias=False)
+                #     )
+                self.conv_layers.append(myConv(in_chan=1, out_chan=1,
+                        k_size=kernel_size, stride=stride, pad=zero_padding, b=False)
                     )
         for i,layer in enumerate(self.conv_layers):
             name = "layer{}".format(i+1)

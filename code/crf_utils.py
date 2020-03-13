@@ -172,6 +172,4 @@ def compare(test_X, test_Y, preds):
             wordMatch += 1
     letterAcc = letterMatch / letterCount
     wordAcc = wordMatch / preds.shape[0]
-    print("Letter Accuracy: ", letterAcc)
-    print("Word Accuracy: ", wordAcc)
     return letterAcc, wordAcc
