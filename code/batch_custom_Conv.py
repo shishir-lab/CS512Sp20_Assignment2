@@ -44,7 +44,7 @@ class myConv(nn.Module):
     def forward(self, X):
         batch_size = X.shape[0]
         if self.padding > 0:
-            m = nn.ZeroPad2d(1)
+            m = nn.ZeroPad2d(self.padding)
             X = m(X)
         X_rows = X.shape[2]
         X_cols = X.shape[3]

@@ -10,7 +10,7 @@ labels = trainSet[:][1]
 trainConv = trainSet[:][0]
 batch_size, max_chars, dimX = trainConv.shape
 all_images = trainConv.reshape(-1,1,16,8)
-conv_layer = myConv(in_chan=1, out_chan=1, k_size=3, stride=[1, 1], pad=True, b=False)
+conv_layer = myConv(in_chan=1, out_chan=1, k_size=5, stride=[1, 1], pad=2, b=False)
 print(all_images[:2].shape)
 out = conv_layer(all_images)
 print(out.shape)
