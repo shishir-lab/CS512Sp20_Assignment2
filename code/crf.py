@@ -187,8 +187,9 @@ class CRF(nn.Module):
             batch_size, max_chars, dimX = X.shape
             all_images = X.view(-1,1,self.input_dim[0],self.input_dim[1])
             for layer in self.conv_layers:
-                out = layer(all_images)
-            out1 = out.view(batch_size, max_chars, -1)
+                all_images = layer(all_images)
+            out1 = all_images.view(batch_size, max_chars, -1)
+            # print(out1.shape, self.embed_dim)
             assert out1.shape[2] == self.embed_dim
             return out1
 #%%

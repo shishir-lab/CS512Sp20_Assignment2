@@ -37,7 +37,7 @@ if cuda:
 
 #%%
 # Model parameters
-conv_layers = [[5, 2, (2,1)]] #
+conv_layers = [[5, 2, (2,1)], [3,1,(1,1)]] #
 input_dim = (16,8)
 num_labels = 26
 # Instantiate the CRF model
@@ -90,7 +90,7 @@ for i in range(num_epochs):
             opt.zero_grad() # clear the gradients
             tr_loss = testcrf.loss(train_X, train_Y) # Obtain the loss for the optimizer to minimize
             tr_loss.backward() # Run backward pass and accumulate gradients
-            # print(tr_loss)
+            print(tr_loss)
             return tr_loss
             
         opt.step(closure) # Perform optimization step (weight updates)
@@ -140,12 +140,12 @@ if cuda:
 else:
     machine = "CPU"
 
-wallClock = np.array([x["time"] for x in log[:-10]])
+wallClock = np.array([x["time"] for x in log])
 wallClock = wallClock - np.min(wallClock)
-testLetterAcc = np.array([x["testLetterAcc"] for x in log[:-10]])
-testWordAcc = np.array([x["testWordAcc"] for x in log[:-10]])
-trainLetterAcc = np.array([x["trainLetterAcc"] for x in log[:-10]])
-trainWordAcc = np.array([x["trainWordAcc"] for x in log[:-10]])
+testLetterAcc = np.array([x["testLetterAcc"] for x in log])
+testWordAcc = np.array([x["testWordAcc"] for x in log])
+trainLetterAcc = np.array([x["trainLetterAcc"] for x in log])
+trainWordAcc = np.array([x["trainWordAcc"] for x in log])
 
 plt.plot(wallClock, trainLetterAcc, label="Train Letter Accuracy", color='blue')
 plt.plot(wallClock, trainWordAcc, label="Train Word Accuracy", color='lightblue')
@@ -155,7 +155,7 @@ plt.grid()
 plt.legend()
 plt.xlabel("Relative Wall Clock (with {})".format(machine))
 plt.ylabel("Accuracy")
-plt.title("Minibatch Training with C=1000, LBFGS Iteration=5, ConvLayer=[[5,2,(2,1)]]")
+plt.title("Minibatch Training with C=1000, LBFGS Iteration=5, ConvLayer=[[5,2,(2,1)], [3,1,(1,1)]]")
 plt.show()
 #%%
 from torchviz import make_dot, make_dot_from_trace
