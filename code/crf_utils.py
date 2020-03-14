@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import torch
-import numpy as np
 
 #%%
 def crf_decode(W, T, word, dimX, dimY):
@@ -100,7 +99,7 @@ def crf_marginals(W, T, word, dimX, dimY):
     for i in range(char_count):
         sum_term = first_term[i] + alpha[i] + lbeta[i]
         log_marginal_y = sum_term - logsumexp_trick(sum_term)
-        marginal_Y[i] = np.exp(log_marginal_y)
+        marginal_Y[i] = torch.exp(log_marginal_y)
         # calculate other marginal dist as well
         if i < char_count-1:
             transition = T # T_{yi, yi+1}
@@ -108,7 +107,7 @@ def crf_marginals(W, T, word, dimX, dimY):
             outer_sum_m = (alpha[i].reshape(-1,1) + lbeta[i+1])
             sum_term_all = outer_sum_w + transition + outer_sum_m
             log_marginal_y_y1 = sum_term_all - logsumexp_trick(sum_term_all, along_axis=False)
-            marginal_Y_Y1[i] = np.exp(log_marginal_y_y1)
+            marginal_Y_Y1[i] = torch.exp(log_marginal_y_y1)
             # Got Denominator same as Zx , which is correct
     return marginal_Y, marginal_Y_Y1
 
