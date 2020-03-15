@@ -10,7 +10,8 @@
 - crf_tests.py : Test cases checking the functions in crf_utils as well as crf. Gradient check
 
 ## Implementation of CNN Architectures
-- lenet.py : Implementation of LeNet
+- lenet.py : Architexture of LeNet (Implementation of LeNet)
+- dCNN.py : Training and Plot
 
 ## training
 - train.py : Modified starter code
