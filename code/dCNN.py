@@ -228,7 +228,6 @@ for epoch in range(epochs):
   print('Train Loss: {:.4f}; Accuracy: {:.4f}; Word_Accuracy: {:.4f}'.format(total_loss, total_acc,whole_word_acc_train))
   print('Accuracy: {:.4f}; Word_Accuracy: {:.4f}'.format(total_acc_test, whole_word_acc_test))
 
-%matplotlib inline
 import matplotlib.pyplot as plt
 
 iterations = range(1,151)
