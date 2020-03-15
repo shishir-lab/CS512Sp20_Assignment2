@@ -7,7 +7,11 @@ from batch_custom_Conv import myConv
 torch.set_default_dtype(torch.float64)
 #%%
 class CRFLoss(torch.autograd.function.Function):
-
+  """
+  Custom CRF loss function with forward and backward implementation
+  Forward calculates the regularized CRF loss
+  Backward calculates the gradient with respect to W, T and g(x)
+  """
   @staticmethod
   def forward(ctx, W, T, words, labels, C, dimX, dimY):
     ctx.dimX = dimX
